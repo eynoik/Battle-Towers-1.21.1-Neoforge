@@ -36,7 +36,7 @@ public final class BattleTowerGenerator {
         int baseY = underground ? Math.max(level.getMinBuildHeight() + 8, surface.getY() - floors * FLOOR_HEIGHT) : surface.getY() - 1;
         BlockPos origin = new BlockPos(surface.getX(), baseY, surface.getZ());
         floors = Math.min(floors, Math.max(2, (level.getMaxBuildHeight() - baseY - 4) / FLOOR_HEIGHT));
-        TowerBuilder.build(level, origin, type, floors, underground);
+        TowerAssembler.build(level, origin, type, floors, underground);
         return true;
     }
 }
