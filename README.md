@@ -1,90 +1,66 @@
 # Battle Towers — Minecraft 1.21.1 NeoForge Port
 
-Unofficial porting workspace for **AtomicStryker's Battle Towers**, targeting **Minecraft 1.21.1 + NeoForge**.
+Modern NeoForge 1.21.1 port workspace for AtomicStryker's classic Battle Towers gameplay.
 
-> **Status:** port scaffold only. The modern project structure is ready, but the legacy gameplay code has not been ported yet.
+## Current state
 
-## Target
+The port is now a playable alpha rather than a scaffold. It includes tower generation, staged loot and spawners, the Battle Tower Golem boss, classic sounds/textures, the deflectable ranged attack, collapse behavior, persistent tower tracking and administration commands.
 
-- Minecraft `1.21.1`
-- NeoForge `21.1.x`
-- Java `21`
-- Mod ID: `battletowers`
-- Package: `atomicstryker.battletowers`
+Target:
+- Minecraft 1.21.1
+- NeoForge 21.1.x
+- Java 21
+- mod id `battletowers`
 
-## Repository layout
+## Gameplay
+
+Natural Battle Towers generate deterministically in newly generated Overworld terrain with spacing and terrain checks. Underground variants are supported. Each tower contains staged chest loot and hostile mob spawners. The guardian starts dormant and wakes when a player approaches, attacks it, or interacts with one of its tracked tower chests.
+
+The Golem preserves the classic gameplay loop: melee combat, rage/slam behavior, charge-and-fireball ranged attack, deflectable projectile, classic Battle Towers audio and the staged tower collapse after its death.
+
+## Commands
+
+Operator commands:
+- `/battletowers spawn [type] [floors] [underground]`
+- `/battletowers types`
+- `/battletowers list`
+- `/battletowers delete`
+- `/battletowers regenerate`
+- `/battletowers deleteall`
+- `/battletowers regenerateall`
+
+Delete/regenerate commands operate on the persistent per-world tower registry instead of scanning arbitrary blocks.
+
+## Configuration
+
+A modern SERVER config is registered as `battletowers-server.toml`. It controls world generation spacing/chance, floor count, queued worldgen work, Golem combat/scaling, fireball timing and power, and collapse behavior.
+
+Loot progression is intentionally data-driven under `data/battletowers/loot_table/chests/` rather than encoded into config strings as in the old Forge version, so modpacks can override it with datapacks.
+
+## Build
+
+Import the project with JDK 21 and Gradle. CI runs a full `gradle build` for the port branch.
+
+If a Gradle wrapper is not present locally, run:
 
 ```text
-src/main/                  active NeoForge 1.21.1 implementation
-src/main/templates/        generated NeoForge mod metadata
-legacy/1.12.2/             legacy Battle Towers reference workspace
-scripts/                    source extraction helpers
-PORTING.md                  subsystem-by-subsystem port plan
-atomicstrykers-minecraft-mods-1.21.1.zip
-                           original source archive uploaded for this port
-```
-
-The uploaded archive contains the wider AtomicStryker mod repository. **Only the `BattleTowers` directory is relevant to this project.** The extraction scripts deliberately locate and copy only that directory.
-
-## Extract the legacy Battle Towers source
-
-Windows PowerShell:
-
-```powershell
-./scripts/extract-legacy.ps1
-```
-
-Linux/macOS/Git Bash:
-
-```bash
-bash ./scripts/extract-legacy.sh
-```
-
-The scripts replace `legacy/1.12.2/` with the complete `BattleTowers` directory from the archive and do not copy any of the other AtomicStryker mods.
-
-## Why the old code is isolated
-
-Despite the archive/branch name, the Battle Towers module itself is still old Forge-era code. Its build script uses **ForgeGradle 2.3** and its Java sources use the old FML lifecycle (`FMLPreInitializationEvent`, `@SidedProxy`, old `GameRegistry`, `EntityPlayerMP`, etc.). Throwing those files directly into the active 1.21.1 source set would only create a wall of compiler errors.
-
-The port therefore starts with a clean NeoForge project and uses the old source strictly as a behavioral reference.
-
-## Build setup
-
-Import the repository as a Gradle project with **JDK 21**.
-
-If a Gradle wrapper is not present yet, generate it once with your installed Gradle:
-
-```bash
 gradle wrapper
 ```
 
 Then build with:
 
-```bash
+```text
 ./gradlew build
 ```
 
-On Windows:
+Windows:
 
-```powershell
-./gradlew.bat build
+```text
+gradlew.bat build
 ```
 
-## Porting strategy
+## Legacy reference
 
-The detailed plan is in [`PORTING.md`](PORTING.md). The intended order is:
+The uploaded AtomicStryker archive is retained only as porting reference. The active 1.21.1 implementation lives under `src/main`; legacy Forge/FML code must not be added to the active source set unchanged.
 
-1. NeoForge bootstrap, registries and config
-2. tower representation and deterministic command placement
-3. Battletower Golem entity/AI
-4. projectile + networking
-5. tower destruction sequence
-6. client renderers and sounds
-7. commands
-8. natural world generation and final data-driven loot/config cleanup
-
-The first useful milestone is **one test tower placeable by command + one spawnable Golem**, not "make every legacy class compile".
-
-## Original project and licensing
-
-Battle Towers was created by **AtomicStryker**. Original code/assets remain subject to the original author's licensing terms. This repository is a porting workspace and should keep attribution and the original license information with any reused source/assets.
+See `PORTING.md` and `PORT_STATUS.md` for architecture and port notes.
