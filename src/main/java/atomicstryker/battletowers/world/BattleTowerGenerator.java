@@ -21,7 +21,7 @@ public final class BattleTowerGenerator {
     public static TowerType chooseType(ServerLevel level, BlockPos center, RandomSource random) {
         BlockState surface = level.getBlockState(findSurface(level, center.getX(), center.getZ()).below());
         if (surface.is(Blocks.SAND) || surface.is(Blocks.SANDSTONE)) return TowerType.SANDSTONE;
-        if (surface.is(Blocks.SNOW_BLOCK) || surface.is(Blocks.ICE)) return TowerType.ICE;
+        if (surface.is(Blocks.SNOW) || surface.is(Blocks.SNOW_BLOCK) || surface.is(Blocks.ICE)) return TowerType.ICE;
         if (!surface.getFluidState().isEmpty()) return TowerType.MOSSY_COBBLESTONE;
         if (random.nextInt(10) == 0) return TowerType.NETHERRACK;
         return random.nextInt(5) == 0 ? TowerType.SMOOTH_STONE : TowerType.COBBLESTONE;
@@ -33,9 +33,11 @@ public final class BattleTowerGenerator {
 
     public static boolean generate(ServerLevel level, BlockPos surface, TowerType type, int requestedFloors, boolean underground) {
         int floors = Math.max(2, Math.min(12, requestedFloors));
-        int baseY = underground ? Math.max(level.getMinBuildHeight() + 8, surface.getY() - floors * FLOOR_HEIGHT) : surface.getY() - 1;
+        int baseY = underground
+                ? Math.max(level.getMinBuildHeight() + 8, surface.getY() - floors * FLOOR_HEIGHT)
+                : surface.getY() - 6;
         BlockPos origin = new BlockPos(surface.getX(), baseY, surface.getZ());
-        floors = Math.min(floors, Math.max(2, (level.getMaxBuildHeight() - baseY - 4) / FLOOR_HEIGHT));
+        floors = Math.min(floors, Math.max(2, (level.getMaxBuildHeight() - baseY - 8) / FLOOR_HEIGHT));
         TowerAssembler.build(level, origin, type, floors, underground);
         return true;
     }
