@@ -8,9 +8,16 @@ public final class BattleTowersConfig {
     public static final ModConfigSpec.BooleanValue WORLDGEN_ENABLED;
     public static final ModConfigSpec.IntValue MIN_DISTANCE_FROM_SPAWN;
     public static final ModConfigSpec.IntValue MIN_DISTANCE_BETWEEN_TOWERS;
+    public static final ModConfigSpec.IntValue SPAWN_CHANCE_PERCENT;
     public static final ModConfigSpec.IntValue UNDERGROUND_CHANCE_PERCENT;
     public static final ModConfigSpec.IntValue DEFAULT_FLOOR_COUNT;
     public static final ModConfigSpec.IntValue MAX_SURFACE_DIFFERENCE;
+    public static final ModConfigSpec.BooleanValue SPAWN_COBBLESTONE;
+    public static final ModConfigSpec.BooleanValue SPAWN_MOSSY_COBBLESTONE;
+    public static final ModConfigSpec.BooleanValue SPAWN_SANDSTONE;
+    public static final ModConfigSpec.BooleanValue SPAWN_ICE;
+    public static final ModConfigSpec.BooleanValue SPAWN_SMOOTH_STONE;
+    public static final ModConfigSpec.BooleanValue SPAWN_JUNGLE;
 
     public static final ModConfigSpec.IntValue WORLDGEN_CHECKS_PER_TICK;
 
@@ -52,6 +59,11 @@ public final class BattleTowersConfig {
         MIN_DISTANCE_BETWEEN_TOWERS = builder
                 .comment("Target minimum horizontal distance in blocks between naturally generated towers.")
                 .defineInRange("minimumDistanceBetweenTowers", 196, 32, 4096);
+        SPAWN_CHANCE_PERCENT = builder
+                .comment(
+                        "Chance, in percent, that a valid candidate location actually attempts to generate a tower.",
+                        "This is applied after the spacing check. 100 keeps the previous alpha behavior; lower values make towers rarer.")
+                .defineInRange("spawnChancePercent", 100, 0, 100);
         UNDERGROUND_CHANCE_PERCENT = builder
                 .comment("Chance, in percent, that a natural tower is generated underground.")
                 .defineInRange("undergroundChancePercent", 15, 0, 100);
@@ -61,6 +73,32 @@ public final class BattleTowersConfig {
         MAX_SURFACE_DIFFERENCE = builder
                 .comment("Maximum allowed height difference across terrain samples before tower generation is rejected.")
                 .defineInRange("maxSurfaceDifference", 22, 0, 128);
+
+        builder.comment(
+                        "Enable or disable individual tower types for natural Overworld generation.",
+                        "Netherrack towers are intentionally not available here and never generate naturally in the Overworld.")
+                .push("towerTypes");
+        SPAWN_COBBLESTONE = builder
+                .comment("Allow cobblestone towers to generate naturally.")
+                .define("cobblestone", true);
+        SPAWN_MOSSY_COBBLESTONE = builder
+                .comment("Allow mossy cobblestone towers to generate naturally.")
+                .define("mossyCobblestone", true);
+        SPAWN_SANDSTONE = builder
+                .comment("Allow sandstone towers to generate naturally on sandy terrain.")
+                .define("sandstone", true);
+        SPAWN_ICE = builder
+                .comment("Allow ice towers to generate naturally on snowy/icy terrain.")
+                .define("ice", true);
+        SPAWN_SMOOTH_STONE = builder
+                .comment("Allow smooth-stone towers to generate naturally.")
+                .define("smoothStone", true);
+        SPAWN_JUNGLE = builder
+                .comment(
+                        "Allow jungle towers to generate naturally on foliage-heavy terrain.",
+                        "Disabled by default to preserve the previous alpha distribution, where foliage used mossy towers.")
+                .define("jungle", false);
+        builder.pop();
         builder.pop();
 
         builder.comment("Performance safeguards for deferred natural generation checks.")
@@ -153,6 +191,10 @@ public final class BattleTowersConfig {
         return get(MIN_DISTANCE_BETWEEN_TOWERS);
     }
 
+    public static int spawnChancePercent() {
+        return get(SPAWN_CHANCE_PERCENT);
+    }
+
     public static int undergroundChancePercent() {
         return get(UNDERGROUND_CHANCE_PERCENT);
     }
@@ -163,6 +205,30 @@ public final class BattleTowersConfig {
 
     public static int maxSurfaceDifference() {
         return get(MAX_SURFACE_DIFFERENCE);
+    }
+
+    public static boolean spawnCobblestone() {
+        return get(SPAWN_COBBLESTONE);
+    }
+
+    public static boolean spawnMossyCobblestone() {
+        return get(SPAWN_MOSSY_COBBLESTONE);
+    }
+
+    public static boolean spawnSandstone() {
+        return get(SPAWN_SANDSTONE);
+    }
+
+    public static boolean spawnIce() {
+        return get(SPAWN_ICE);
+    }
+
+    public static boolean spawnSmoothStone() {
+        return get(SPAWN_SMOOTH_STONE);
+    }
+
+    public static boolean spawnJungle() {
+        return get(SPAWN_JUNGLE);
     }
 
     public static int worldgenChecksPerTick() {
