@@ -98,17 +98,21 @@ public class BattleTowerGolem extends IronGolem {
     public void setTowerType(int towerType) {
         this.towerType = Math.max(0, towerType);
         this.drops = 5 + this.towerType;
+        applyTowerScaling(true);
+    }
 
+    private void applyTowerScaling(boolean healToFull) {
         if (getAttribute(Attributes.ATTACK_DAMAGE) != null) {
             double damage = BattleTowersConfig.golemBaseAttackDamage()
                     + BattleTowersConfig.golemAttackDamagePerTowerType() * this.towerType;
             getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(damage);
         }
         if (getAttribute(Attributes.MAX_HEALTH) != null) {
+            double previousHealth = getHealth();
             double health = BattleTowersConfig.golemBaseHealth()
                     + BattleTowersConfig.golemHealthPerTowerType() * this.towerType;
             getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
-            setHealth(getMaxHealth());
+            setHealth(healToFull ? getMaxHealth() : Math.min(previousHealth, getMaxHealth()));
         }
     }
 
@@ -331,7 +335,7 @@ public class BattleTowerGolem extends IronGolem {
         towerOrigin = new BlockPos(tag.getInt("TowerX"), tag.getInt("TowerY"), tag.getInt("TowerZ"));
         towerBossPosition = new BlockPos(tag.getInt("BossX"), tag.getInt("BossY"), tag.getInt("BossZ"));
         towerUnderground = tag.getBoolean("TowerUnderground");
-        setTowerType(towerType);
+        applyTowerScaling(false);
         if (tag.getBoolean("Awake")) {
             setAwake();
         } else {
