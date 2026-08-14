@@ -3,9 +3,9 @@ package atomicstryker.battletowers.world;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.Heightmap;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 
 public final class BattleTowerGenerator {
     public static final int FLOOR_HEIGHT = 7;
