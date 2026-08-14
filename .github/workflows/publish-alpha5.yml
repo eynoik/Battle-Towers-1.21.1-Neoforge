@@ -1,0 +1,56 @@
+name: Publish alpha.5 prerelease
+
+on:
+  push:
+    branches:
+      - 'agent/port-battletowers'
+    paths:
+      - '.github/workflows/publish-alpha5.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout alpha.5 target
+        uses: actions/checkout@v5
+        with:
+          ref: 0660225d69cd07f3ce388435defcdef6322681bb
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.2.1'
+
+      - name: Build alpha.5
+        shell: bash
+        run: gradle build --no-daemon --stacktrace
+
+      - name: Prepare release JAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | head -n 1)"
+          test -n "$JAR"
+          cp "$JAR" BattleTowers-1.21.1-NeoForge-alpha.5.jar
+
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create v1.21.1-port-alpha.5 \
+            BattleTowers-1.21.1-NeoForge-alpha.5.jar \
+            --repo "$GITHUB_REPOSITORY" \
+            --target 0660225d69cd07f3ce388435defcdef6322681bb \
+            --title "Battle Towers 1.21.1 NeoForge alpha.5" \
+            --prerelease \
+            --notes $'Pre-release test build of the Battle Towers port for Minecraft 1.21.1 NeoForge.\n\nIncludes the Golem renderer fix, /battletowers locate, tower collapse death-trigger fix, and removal of generated torches/glowstone.\n\nThis is an alpha build intended for in-game testing.'
