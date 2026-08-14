@@ -40,7 +40,7 @@ public final class BattleTowerGenerator {
         BlockPos origin = new BlockPos(surface.getX(), baseY, surface.getZ());
         floors = Math.min(floors, Math.max(2, (level.getMaxBuildHeight() - baseY - 8) / FLOOR_HEIGHT));
         TowerAssembler.build(level, origin, type, floors, underground);
-        TowerRegistrySavedData.get(level).addOrReplace(origin, type, floors, underground);
+        TowerRegistrySavedData.get(level).addOrReplace(level, origin, type, floors, underground);
         return true;
     }
 }
