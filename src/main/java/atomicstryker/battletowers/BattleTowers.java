@@ -3,6 +3,7 @@ package atomicstryker.battletowers;
 import atomicstryker.battletowers.command.BattleTowerCommands;
 import atomicstryker.battletowers.registry.ModEntities;
 import atomicstryker.battletowers.world.BattleTowerWorldgen;
+import atomicstryker.battletowers.world.TowerDestructionManager;
 import com.mojang.logging.LogUtils;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -20,6 +21,7 @@ public final class BattleTowers {
         NeoForge.EVENT_BUS.addListener(BattleTowerCommands::register);
         NeoForge.EVENT_BUS.addListener(BattleTowerWorldgen::onChunkLoad);
         NeoForge.EVENT_BUS.addListener(BattleTowerWorldgen::onServerTick);
+        NeoForge.EVENT_BUS.addListener(TowerDestructionManager::onServerTick);
         LOGGER.info("Battle Towers NeoForge 1.21.1 port loaded");
     }
 }
