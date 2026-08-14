@@ -3,6 +3,7 @@ package atomicstryker.battletowers.entity;
 import atomicstryker.battletowers.config.BattleTowersConfig;
 import atomicstryker.battletowers.registry.ModSounds;
 import atomicstryker.battletowers.world.TowerDestructionManager;
+import atomicstryker.battletowers.world.TowerRegistrySavedData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -39,6 +40,7 @@ public class BattleTowerGolem extends IronGolem {
     private BlockPos towerOrigin = BlockPos.ZERO;
     private BlockPos towerBossPosition = BlockPos.ZERO;
     private boolean towerUnderground;
+    private boolean deathHandled;
 
     public BattleTowerGolem(EntityType<? extends IronGolem> type, Level level) {
         super(type, level);
@@ -286,9 +288,9 @@ public class BattleTowerGolem extends IronGolem {
 
     @Override
     public void die(DamageSource source) {
-        boolean wasAlive = isAlive();
-        super.die(source);
-        if (wasAlive && level() instanceof ServerLevel serverLevel) {
+        if (!deathHandled && level() instanceof ServerLevel serverLevel) {
+            deathHandled = true;
+
             for (int i = 0; i < drops; i++) {
                 spawnAtLocation(Items.DIAMOND);
                 spawnAtLocation(Items.REDSTONE);
@@ -298,9 +300,13 @@ public class BattleTowerGolem extends IronGolem {
                 spawnAtLocation(Blocks.CLAY.asItem());
             }
 
+            if (!towerOrigin.equals(BlockPos.ZERO)) {
+                TowerRegistrySavedData.get(serverLevel).remove(serverLevel, towerOrigin);
+            }
             BlockPos collapseCenter = towerBossPosition.equals(BlockPos.ZERO) ? blockPosition() : towerBossPosition;
             TowerDestructionManager.start(serverLevel, collapseCenter, towerUnderground);
         }
+        super.die(source);
     }
 
     @Override
