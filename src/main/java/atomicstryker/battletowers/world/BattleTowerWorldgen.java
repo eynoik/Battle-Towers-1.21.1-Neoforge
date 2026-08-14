@@ -25,6 +25,7 @@ public final class BattleTowerWorldgen {
             {-4, -5}, {-4, 0}, {-4, 5}
     };
 
+    private static final long SPAWN_CHANCE_SALT = 0x4C4F4F54544F5745L;
     private static final Queue<PendingChunk> PENDING = new ConcurrentLinkedQueue<>();
 
     private BattleTowerWorldgen() {
@@ -76,6 +77,9 @@ public final class BattleTowerWorldgen {
         if (!isCandidateChunk(seed, chunk)) {
             return;
         }
+        if (!passesSpawnChance(seed, chunk)) {
+            return;
+        }
 
         int x = (chunk.x << 4) + 8;
         int z = (chunk.z << 4) + 8;
@@ -98,6 +102,19 @@ public final class BattleTowerWorldgen {
         boolean underground = random.nextInt(100) < BattleTowersConfig.undergroundChancePercent();
         BattleTowerGenerator.generate(level, surface, type, BattleTowersConfig.defaultFloorCount(), underground);
         BattleTowers.LOGGER.info("Generated natural {} Battle Tower at [{}, {}], underground={}", type.serializedName(), x, z, underground);
+    }
+
+    private static boolean passesSpawnChance(long seed, ChunkPos chunk) {
+        int chance = BattleTowersConfig.spawnChancePercent();
+        if (chance <= 0) {
+            return false;
+        }
+        if (chance >= 100) {
+            return true;
+        }
+
+        RandomSource chanceRandom = RandomSource.create(mix64(seed ^ chunk.toLong() ^ SPAWN_CHANCE_SALT));
+        return chanceRandom.nextInt(100) < chance;
     }
 
     private static TowerType chooseTypeAndValidate(ServerLevel level, BlockPos center, RandomSource random) {
@@ -140,11 +157,77 @@ public final class BattleTowerWorldgen {
         }
 
         int max = Math.max(Math.max(water, snow), Math.max(sand, Math.max(foliage, other)));
-        if (sand == max) return TowerType.SANDSTONE;
-        if (snow == max) return TowerType.ICE;
-        if (water == max || foliage == max) return TowerType.MOSSY_COBBLESTONE;
-        if (random.nextInt(10) == 0) return TowerType.NETHERRACK;
-        return random.nextInt(5) == 0 ? TowerType.SMOOTH_STONE : TowerType.COBBLESTONE;
+
+        if (sand == max) {
+            return firstEnabled(
+                    TowerType.SANDSTONE,
+                    TowerType.COBBLESTONE,
+                    TowerType.SMOOTH_STONE,
+                    TowerType.MOSSY_COBBLESTONE,
+                    TowerType.ICE,
+                    TowerType.JUNGLE);
+        }
+        if (snow == max) {
+            return firstEnabled(
+                    TowerType.ICE,
+                    TowerType.COBBLESTONE,
+                    TowerType.SMOOTH_STONE,
+                    TowerType.MOSSY_COBBLESTONE,
+                    TowerType.SANDSTONE,
+                    TowerType.JUNGLE);
+        }
+        if (water == max) {
+            return firstEnabled(
+                    TowerType.MOSSY_COBBLESTONE,
+                    TowerType.COBBLESTONE,
+                    TowerType.SMOOTH_STONE,
+                    TowerType.SANDSTONE,
+                    TowerType.ICE,
+                    TowerType.JUNGLE);
+        }
+        if (foliage == max) {
+            if (BattleTowersConfig.spawnJungle()) {
+                return TowerType.JUNGLE;
+            }
+            return firstEnabled(
+                    TowerType.MOSSY_COBBLESTONE,
+                    TowerType.COBBLESTONE,
+                    TowerType.SMOOTH_STONE,
+                    TowerType.SANDSTONE,
+                    TowerType.ICE);
+        }
+
+        if (random.nextInt(5) == 0 && BattleTowersConfig.spawnSmoothStone()) {
+            return TowerType.SMOOTH_STONE;
+        }
+        return firstEnabled(
+                TowerType.COBBLESTONE,
+                TowerType.SMOOTH_STONE,
+                TowerType.MOSSY_COBBLESTONE,
+                TowerType.SANDSTONE,
+                TowerType.ICE,
+                TowerType.JUNGLE);
+    }
+
+    private static TowerType firstEnabled(TowerType... candidates) {
+        for (TowerType candidate : candidates) {
+            if (isNaturalOverworldTypeEnabled(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isNaturalOverworldTypeEnabled(TowerType type) {
+        return switch (type) {
+            case COBBLESTONE -> BattleTowersConfig.spawnCobblestone();
+            case MOSSY_COBBLESTONE -> BattleTowersConfig.spawnMossyCobblestone();
+            case SANDSTONE -> BattleTowersConfig.spawnSandstone();
+            case ICE -> BattleTowersConfig.spawnIce();
+            case SMOOTH_STONE -> BattleTowersConfig.spawnSmoothStone();
+            case JUNGLE -> BattleTowersConfig.spawnJungle();
+            case NETHERRACK -> false;
+        };
     }
 
     private static boolean isCandidateChunk(long seed, ChunkPos chunk) {
