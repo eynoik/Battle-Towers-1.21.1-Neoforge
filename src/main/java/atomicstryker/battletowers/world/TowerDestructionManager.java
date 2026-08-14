@@ -87,7 +87,9 @@ public final class TowerDestructionManager {
             level.playSound(null, bossCenter.getX(), y, bossCenter.getZ(), SoundEvents.GENERIC_EXPLODE, SoundSource.HOSTILE, 4.0F, 0.75F);
             level.explode(null, bossCenter.getX() + 0.5D, y, bossCenter.getZ() + 0.5D,
                     EXPLOSION_POWER, Level.ExplosionInteraction.TNT);
-            cleanFloor(level, y);
+            if (!underground) {
+                cleanFlyingBlocks(level, y);
+            }
             destroyedFloors++;
             return destroyedFloors >= FLOORS_TO_DESTROY;
         }
@@ -109,13 +111,11 @@ public final class TowerDestructionManager {
                     x, py, z, 2, 0.15D, 0.15D, 0.15D, 0.01D);
         }
 
-        private void cleanFloor(ServerLevel level, int explosionY) {
-            int startY = underground ? explosionY - 1 : explosionY + 1;
+        private void cleanFlyingBlocks(ServerLevel level, int explosionY) {
             for (int x = -8; x < 8; x++) {
                 for (int z = -8; z < 8; z++) {
-                    for (int y = 0; y < 8; y++) {
-                        int blockY = underground ? startY - y : startY + y;
-                        BlockPos pos = new BlockPos(bossCenter.getX() + x, blockY, bossCenter.getZ() + z);
+                    for (int y = 1; y < 9; y++) {
+                        BlockPos pos = new BlockPos(bossCenter.getX() + x, explosionY + y, bossCenter.getZ() + z);
                         if (!level.getBlockState(pos).isAir()) {
                             level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
                         }
