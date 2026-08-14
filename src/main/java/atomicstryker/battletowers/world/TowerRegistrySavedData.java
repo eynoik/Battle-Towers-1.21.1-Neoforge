@@ -14,7 +14,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
-/** Persistent per-Overworld index of generated Battle Towers. */
+/** Persistent cross-dimension index of generated Battle Towers, stored in Overworld SavedData. */
 public final class TowerRegistrySavedData extends SavedData {
     private static final String DATA_NAME = BattleTowers.MOD_ID + "_towers";
     private final List<TowerRecord> towers = new ArrayList<>();
@@ -32,6 +32,7 @@ public final class TowerRegistrySavedData extends SavedData {
         for (Tag value : list) {
             CompoundTag tower = (CompoundTag) value;
             data.towers.add(new TowerRecord(
+                    tower.getString("Dimension"),
                     new BlockPos(tower.getInt("X"), tower.getInt("Y"), tower.getInt("Z")),
                     tower.getString("Type"),
                     tower.getInt("Floors"),
@@ -40,40 +41,47 @@ public final class TowerRegistrySavedData extends SavedData {
         return data;
     }
 
-    public void addOrReplace(BlockPos origin, TowerType type, int floors, boolean underground) {
-        towers.removeIf(record -> record.origin().equals(origin));
-        towers.add(new TowerRecord(origin.immutable(), type.serializedName(), floors, underground));
+    public void addOrReplace(ServerLevel level, BlockPos origin, TowerType type, int floors, boolean underground) {
+        String dimension = dimensionId(level);
+        towers.removeIf(record -> record.dimension().equals(dimension) && record.origin().equals(origin));
+        towers.add(new TowerRecord(dimension, origin.immutable(), type.serializedName(), floors, underground));
         setDirty();
     }
 
-    public boolean remove(BlockPos origin) {
-        boolean changed = towers.removeIf(record -> record.origin().equals(origin));
+    public boolean remove(ServerLevel level, BlockPos origin) {
+        String dimension = dimensionId(level);
+        boolean changed = towers.removeIf(record -> record.dimension().equals(dimension) && record.origin().equals(origin));
         if (changed) {
             setDirty();
         }
         return changed;
     }
 
-    public void clear() {
-        if (!towers.isEmpty()) {
-            towers.clear();
+    public void clear(ServerLevel level) {
+        String dimension = dimensionId(level);
+        if (towers.removeIf(record -> record.dimension().equals(dimension))) {
             setDirty();
         }
     }
 
-    public List<TowerRecord> all() {
-        return List.copyOf(towers);
+    public List<TowerRecord> all(ServerLevel level) {
+        String dimension = dimensionId(level);
+        return towers.stream().filter(record -> record.dimension().equals(dimension)).toList();
     }
 
-    public Optional<TowerRecord> nearest(BlockPos pos, double maxDistance) {
+    public Optional<TowerRecord> nearest(ServerLevel level, BlockPos pos, double maxDistance) {
+        String dimension = dimensionId(level);
         double maxDistanceSq = maxDistance * maxDistance;
         return towers.stream()
+                .filter(record -> record.dimension().equals(dimension))
                 .filter(record -> record.origin().distSqr(pos) <= maxDistanceSq)
                 .min(Comparator.comparingDouble(record -> record.origin().distSqr(pos)));
     }
 
-    public Optional<TowerRecord> containing(BlockPos pos) {
+    public Optional<TowerRecord> containing(ServerLevel level, BlockPos pos) {
+        String dimension = dimensionId(level);
         return towers.stream()
+                .filter(record -> record.dimension().equals(dimension))
                 .filter(record -> contains(record, pos))
                 .min(Comparator.comparingDouble(record -> record.origin().distSqr(pos)));
     }
@@ -90,11 +98,16 @@ public final class TowerRegistrySavedData extends SavedData {
                 && pos.getY() >= minY && pos.getY() <= maxY;
     }
 
+    private static String dimensionId(ServerLevel level) {
+        return level.dimension().location().toString();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         ListTag list = new ListTag();
         for (TowerRecord record : towers) {
             CompoundTag tower = new CompoundTag();
+            tower.putString("Dimension", record.dimension());
             tower.putInt("X", record.origin().getX());
             tower.putInt("Y", record.origin().getY());
             tower.putInt("Z", record.origin().getZ());
@@ -107,7 +120,7 @@ public final class TowerRegistrySavedData extends SavedData {
         return tag;
     }
 
-    public record TowerRecord(BlockPos origin, String type, int floors, boolean underground) {
+    public record TowerRecord(String dimension, BlockPos origin, String type, int floors, boolean underground) {
         public TowerType towerType() {
             return TowerType.byName(type);
         }
