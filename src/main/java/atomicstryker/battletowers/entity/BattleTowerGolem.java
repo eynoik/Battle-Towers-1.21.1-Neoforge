@@ -20,15 +20,18 @@ import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.LargeFireball;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
 public class BattleTowerGolem extends IronGolem {
     private static final EntityDataAccessor<Boolean> AWAKE = SynchedEntityData.defineId(BattleTowerGolem.class, EntityDataSerializers.BOOLEAN);
 
     private int rageCounter = 175;
     private int noTargetCountdown = 90;
+    private int attackCounter;
     private int towerType;
     private int drops = 1;
     private BlockPos towerOrigin = BlockPos.ZERO;
@@ -74,6 +77,7 @@ public class BattleTowerGolem extends IronGolem {
             entityData.set(AWAKE, false);
             setNoAi(true);
             setTarget(null);
+            attackCounter = 0;
         }
     }
 
@@ -158,6 +162,9 @@ public class BattleTowerGolem extends IronGolem {
 
         Player target = getTarget() instanceof Player player ? player : null;
         if (target == null || !target.isAlive()) {
+            if (attackCounter > 0) {
+                attackCounter--;
+            }
             if (--noTargetCountdown <= 0 && onGround()) {
                 heal(getMaxHealth());
                 rageCounter = 125;
@@ -167,6 +174,8 @@ public class BattleTowerGolem extends IronGolem {
         }
 
         noTargetCountdown = 90;
+        tickRangedAttack(target);
+
         boolean nearby = distanceToSqr(target) < 36.0D;
         boolean targetBelow = getY() - target.getY() > 0.3D;
 
@@ -180,6 +189,44 @@ public class BattleTowerGolem extends IronGolem {
             performSlam(target);
             rageCounter = 125;
         }
+    }
+
+    private void tickRangedAttack(Player target) {
+        if (!hasLineOfSight(target)) {
+            if (attackCounter > 0) {
+                attackCounter--;
+            }
+            return;
+        }
+
+        if (attackCounter == 10) {
+            level().playSound(null, blockPosition(), SoundEvents.GHAST_WARN, SoundSource.HOSTILE, 2.0F,
+                    1.0F + (random.nextFloat() - random.nextFloat()) * 0.2F);
+        }
+
+        attackCounter++;
+        if (attackCounter >= 20) {
+            conjureFireball(target);
+            attackCounter = -40;
+        }
+    }
+
+    private void conjureFireball(Player target) {
+        if (!(level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        double sourceY = getY() + getBbHeight() * 0.8D;
+        double targetY = target.getBoundingBox().minY + target.getBbHeight() * 0.5D;
+        Vec3 direction = new Vec3(target.getX() - getX(), targetY - sourceY, target.getZ() - getZ()).normalize();
+        Vec3 look = getLookAngle();
+
+        level().playSound(null, blockPosition(), SoundEvents.GHAST_SHOOT, SoundSource.HOSTILE, 2.0F,
+                1.0F + (random.nextFloat() - random.nextFloat()) * 0.2F);
+
+        LargeFireball fireball = new LargeFireball(serverLevel, this, direction, 1);
+        fireball.setPos(getX() + look.x * 2.0D, sourceY + look.y * 0.5D, getZ() + look.z * 2.0D);
+        serverLevel.addFreshEntity(fireball);
     }
 
     private void performSlam(Player target) {
@@ -220,6 +267,7 @@ public class BattleTowerGolem extends IronGolem {
         tag.putBoolean("Awake", !isDormant());
         tag.putInt("RageCounter", rageCounter);
         tag.putInt("NoTargetCountdown", noTargetCountdown);
+        tag.putInt("AttackCounter", attackCounter);
         tag.putInt("TowerType", towerType);
         tag.putInt("Drops", drops);
         tag.putInt("TowerX", towerOrigin.getX());
@@ -236,6 +284,7 @@ public class BattleTowerGolem extends IronGolem {
         super.readAdditionalSaveData(tag);
         rageCounter = tag.getInt("RageCounter");
         noTargetCountdown = tag.getInt("NoTargetCountdown");
+        attackCounter = tag.getInt("AttackCounter");
         towerType = tag.getInt("TowerType");
         drops = Math.max(1, tag.getInt("Drops"));
         towerOrigin = new BlockPos(tag.getInt("TowerX"), tag.getInt("TowerY"), tag.getInt("TowerZ"));
