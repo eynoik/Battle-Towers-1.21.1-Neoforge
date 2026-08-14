@@ -1,5 +1,6 @@
 package atomicstryker.battletowers.world;
 
+import atomicstryker.battletowers.config.BattleTowersConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -28,7 +29,7 @@ public final class BattleTowerGenerator {
     }
 
     public static boolean generate(ServerLevel level, BlockPos surface, TowerType type) {
-        return generate(level, surface, type, DEFAULT_FLOORS, false);
+        return generate(level, surface, type, BattleTowersConfig.defaultFloorCount(), false);
     }
 
     public static boolean generate(ServerLevel level, BlockPos surface, TowerType type, int requestedFloors, boolean underground) {
@@ -39,6 +40,7 @@ public final class BattleTowerGenerator {
         BlockPos origin = new BlockPos(surface.getX(), baseY, surface.getZ());
         floors = Math.min(floors, Math.max(2, (level.getMaxBuildHeight() - baseY - 8) / FLOOR_HEIGHT));
         TowerAssembler.build(level, origin, type, floors, underground);
+        TowerRegistrySavedData.get(level).addOrReplace(origin, type, floors, underground);
         return true;
     }
 }
