@@ -1,5 +1,7 @@
 package atomicstryker.battletowers.entity;
 
+import atomicstryker.battletowers.config.BattleTowersConfig;
+import atomicstryker.battletowers.registry.ModSounds;
 import atomicstryker.battletowers.world.TowerDestructionManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -7,6 +9,7 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
@@ -84,8 +87,8 @@ public class BattleTowerGolem extends IronGolem {
     public void setAwake() {
         if (!level().isClientSide) {
             if (isDormant()) {
-                noTargetCountdown = 90;
-                level().playSound(null, blockPosition(), SoundEvents.IRON_GOLEM_REPAIR, SoundSource.HOSTILE, 2.0F, 0.8F);
+                resetNoTargetCountdown();
+                level().playSound(null, blockPosition(), ModSounds.GOLEM_AWAKEN.get(), SoundSource.HOSTILE, 4.0F, 1.0F);
             }
             entityData.set(AWAKE, true);
             setNoAi(false);
@@ -95,11 +98,16 @@ public class BattleTowerGolem extends IronGolem {
     public void setTowerType(int towerType) {
         this.towerType = Math.max(0, towerType);
         this.drops = 5 + this.towerType;
+
         if (getAttribute(Attributes.ATTACK_DAMAGE) != null) {
-            getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(7.0D + this.towerType);
+            double damage = BattleTowersConfig.golemBaseAttackDamage()
+                    + BattleTowersConfig.golemAttackDamagePerTowerType() * this.towerType;
+            getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(damage);
         }
         if (getAttribute(Attributes.MAX_HEALTH) != null) {
-            getAttribute(Attributes.MAX_HEALTH).setBaseValue(150.0D + 50.0D * this.towerType);
+            double health = BattleTowersConfig.golemBaseHealth()
+                    + BattleTowersConfig.golemHealthPerTowerType() * this.towerType;
+            getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
             setHealth(getMaxHealth());
         }
     }
@@ -151,7 +159,7 @@ public class BattleTowerGolem extends IronGolem {
 
         if (isDormant()) {
             setNoAi(true);
-            Player nearby = level().getNearestPlayer(this, 6.0D);
+            Player nearby = level().getNearestPlayer(this, BattleTowersConfig.golemWakeDistance());
             if (nearby != null && !nearby.isSpectator() && hasLineOfSight(nearby)) {
                 setAwake();
                 setTarget(nearby);
@@ -173,7 +181,7 @@ public class BattleTowerGolem extends IronGolem {
             return;
         }
 
-        noTargetCountdown = 90;
+        resetNoTargetCountdown();
         tickRangedAttack(target);
 
         boolean nearby = distanceToSqr(target) < 36.0D;
@@ -192,6 +200,10 @@ public class BattleTowerGolem extends IronGolem {
     }
 
     private void tickRangedAttack(Player target) {
+        if (!BattleTowersConfig.golemFireballEnabled()) {
+            attackCounter = 0;
+            return;
+        }
         if (!hasLineOfSight(target)) {
             if (attackCounter > 0) {
                 attackCounter--;
@@ -199,15 +211,17 @@ public class BattleTowerGolem extends IronGolem {
             return;
         }
 
-        if (attackCounter == 10) {
-            level().playSound(null, blockPosition(), SoundEvents.GHAST_WARN, SoundSource.HOSTILE, 2.0F,
+        int chargeTicks = BattleTowersConfig.golemFireballChargeTicks();
+        int chargeSoundTick = Math.max(1, chargeTicks / 2);
+        if (attackCounter == chargeSoundTick) {
+            level().playSound(null, blockPosition(), ModSounds.GOLEM_CHARGE.get(), SoundSource.HOSTILE, 4.0F,
                     1.0F + (random.nextFloat() - random.nextFloat()) * 0.2F);
         }
 
         attackCounter++;
-        if (attackCounter >= 20) {
+        if (attackCounter >= chargeTicks) {
             conjureFireball(target);
-            attackCounter = -40;
+            attackCounter = -BattleTowersConfig.golemFireballCooldownTicks();
         }
     }
 
@@ -221,25 +235,52 @@ public class BattleTowerGolem extends IronGolem {
         Vec3 direction = new Vec3(target.getX() - getX(), targetY - sourceY, target.getZ() - getZ()).normalize();
         Vec3 look = getLookAngle();
 
-        level().playSound(null, blockPosition(), SoundEvents.GHAST_SHOOT, SoundSource.HOSTILE, 2.0F,
+        level().playSound(null, blockPosition(), SoundEvents.GHAST_SHOOT, SoundSource.HOSTILE, 4.0F,
                 1.0F + (random.nextFloat() - random.nextFloat()) * 0.2F);
 
-        LargeFireball fireball = new LargeFireball(serverLevel, this, direction, 1);
+        // Modern LargeFireball already implements projectile deflection, so players can
+        // punch this back at the Golem just like the classic Battle Towers projectile.
+        LargeFireball fireball = new LargeFireball(
+                serverLevel,
+                this,
+                direction,
+                BattleTowersConfig.golemFireballExplosionPower());
         fireball.setPos(getX() + look.x * 2.0D, sourceY + look.y * 0.5D, getZ() + look.z * 2.0D);
         serverLevel.addFreshEntity(fireball);
     }
 
     private void performSlam(Player target) {
-        level().playSound(null, blockPosition(), SoundEvents.IRON_GOLEM_ATTACK, SoundSource.HOSTILE, 2.0F, 0.65F);
+        level().playSound(null, blockPosition(), ModSounds.GOLEM_SPECIAL.get(), SoundSource.HOSTILE, 4.0F, 1.0F);
         if (getHealth() <= getMaxHealth() * 0.5F) {
             heal(20.0F);
         }
 
-        if (level() instanceof ServerLevel serverLevel && getY() - target.getY() > 0.3D) {
-            serverLevel.explode(this, getX(), getY() - 0.3D, getZ(), 4.0F, Level.ExplosionInteraction.MOB);
+        if (level() instanceof ServerLevel serverLevel
+                && getY() - target.getY() > 0.3D
+                && BattleTowersConfig.golemExplosionsEnabled()) {
+            serverLevel.explode(this, getX(), getY() - 0.3D, getZ(), BattleTowersConfig.golemSlamExplosionPower(), Level.ExplosionInteraction.MOB);
         } else {
             target.hurt(damageSources().mobAttack(this), 3.5F);
         }
+    }
+
+    private void resetNoTargetCountdown() {
+        noTargetCountdown = BattleTowersConfig.golemResetDelayTicks();
+    }
+
+    @Override
+    protected SoundEvent getAmbientSound() {
+        return isDormant() ? null : ModSounds.GOLEM.get();
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(DamageSource damageSource) {
+        return ModSounds.GOLEM_HURT.get();
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        return ModSounds.GOLEM_DEATH.get();
     }
 
     @Override
@@ -290,6 +331,7 @@ public class BattleTowerGolem extends IronGolem {
         towerOrigin = new BlockPos(tag.getInt("TowerX"), tag.getInt("TowerY"), tag.getInt("TowerZ"));
         towerBossPosition = new BlockPos(tag.getInt("BossX"), tag.getInt("BossY"), tag.getInt("BossZ"));
         towerUnderground = tag.getBoolean("TowerUnderground");
+        setTowerType(towerType);
         if (tag.getBoolean("Awake")) {
             setAwake();
         } else {
