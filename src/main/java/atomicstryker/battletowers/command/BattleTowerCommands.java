@@ -52,6 +52,8 @@ public final class BattleTowerCommands {
                                 .executes(context -> listTypes(context.getSource())))
                         .then(Commands.literal("list")
                                 .executes(context -> listTowers(context.getSource())))
+                        .then(Commands.literal("locate")
+                                .executes(context -> locateNearest(context.getSource())))
                         .then(Commands.literal("delete")
                                 .executes(context -> deleteNearest(context.getSource())))
                         .then(Commands.literal("regenerate")
@@ -92,6 +94,26 @@ public final class BattleTowerCommands {
         int count = TowerRegistrySavedData.get(level).all(level).size();
         source.sendSuccess(() -> Component.literal("Tracked Battle Towers in this dimension: " + count), false);
         return count;
+    }
+
+    private static int locateNearest(CommandSourceStack source) {
+        ServerLevel level = source.getLevel();
+        BlockPos pos = BlockPos.containing(source.getPosition());
+        return TowerRegistrySavedData.get(level).nearest(level, pos, Double.POSITIVE_INFINITY)
+                .map(record -> {
+                    BlockPos tower = record.origin();
+                    int distance = (int) Math.round(Math.sqrt(tower.distSqr(pos)));
+                    source.sendSuccess(() -> Component.literal(
+                            "Nearest Battle Tower: " + record.type() + " at "
+                                    + tower.getX() + " " + tower.getY() + " " + tower.getZ()
+                                    + " (" + distance + " blocks)"
+                                    + (record.underground() ? " [underground]" : "")), false);
+                    return 1;
+                })
+                .orElseGet(() -> {
+                    source.sendFailure(Component.literal("No generated Battle Towers are tracked in this dimension yet."));
+                    return 0;
+                });
     }
 
     private static int deleteNearest(CommandSourceStack source) {
