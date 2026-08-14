@@ -23,7 +23,7 @@ final class TowerAssembler {
         }
 
         if (bossFloorOrigin != null) {
-            TowerBossSpawner.spawn(level, origin, bossFloorOrigin.offset(0, 6, 0), type);
+            TowerBossSpawner.spawn(level, origin, bossFloorOrigin.offset(0, 6, 0), type, underground);
         }
     }
 }
