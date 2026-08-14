@@ -1,66 +1,112 @@
-# Battle Towers — Minecraft 1.21.1 NeoForge Port
+# Battle Towers — Minecraft 1.21.1 NeoForge
 
-Modern NeoForge 1.21.1 port workspace for AtomicStryker's classic Battle Towers gameplay.
+An unofficial port of **AtomicStryker's Battle Towers** to **Minecraft 1.21.1 NeoForge**.
 
-## Current state
+Battle Towers adds large multi-floor towers to the world, filled with hostile mob spawners, loot chests and a Battle Tower Golem waiting at the top. Defeat the guardian, grab what you can and get out before the tower starts collapsing.
 
-The port is now a playable alpha rather than a scaffold. It includes tower generation, staged loot and spawners, the Battle Tower Golem boss, classic sounds/textures, the deflectable ranged attack, collapse behavior, persistent tower tracking and administration commands.
+> **Status:** Alpha / pre-release. The mod is playable, but bugs and balance changes are still expected.
 
-Target:
-- Minecraft 1.21.1
-- NeoForge 21.1.x
-- Java 21
-- mod id `battletowers`
+## Requirements
+
+- **Minecraft:** 1.21.1
+- **Mod loader:** NeoForge 21.1.x
+- **Java:** 21
+
+## Installation
+
+1. Install NeoForge for Minecraft 1.21.1.
+2. Download the latest Battle Towers `.jar` from **GitHub Releases**.
+3. Put the JAR into your Minecraft `mods` folder.
+4. Start the game.
+
+For servers, install the mod on the server as well.
 
 ## Gameplay
 
-Natural Battle Towers generate deterministically in newly generated Overworld terrain with spacing and terrain checks. Underground variants are supported. Each tower contains staged chest loot and hostile mob spawners. The guardian starts dormant and wakes when a player approaches, attacks it, or interacts with one of its tracked tower chests.
+Battle Towers generate naturally in newly generated **Overworld** chunks.
 
-The Golem preserves the classic gameplay loop: melee combat, rage/slam behavior, charge-and-fireball ranged attack, deflectable projectile, classic Battle Towers audio and the staged tower collapse after its death.
+Depending on the terrain, different tower styles can appear, including cobblestone, mossy cobblestone, sandstone, ice and smooth stone variants. Underground towers are also supported.
 
-## Commands
+**Netherrack towers do not generate naturally in the Overworld.**
 
-Operator commands:
-- `/battletowers spawn [type] [floors] [underground]`
-- `/battletowers types`
-- `/battletowers list`
-- `/battletowers delete`
-- `/battletowers regenerate`
-- `/battletowers deleteall`
-- `/battletowers regenerateall`
+Each tower contains:
 
-Delete/regenerate commands operate on the persistent per-world tower registry instead of scanning arbitrary blocks.
+- multiple floors of hostile mob spawners;
+- loot chests with progression based on tower floor;
+- a Battle Tower Golem guardian;
+- classic Battle Towers sounds and textures;
+- the Golem's melee, slam and fireball attacks;
+- a deflectable Golem fireball;
+- the classic delayed tower collapse after the Golem dies.
+
+The Golem starts dormant and wakes when a player gets close or interferes with its tower.
 
 ## Configuration
 
-A modern SERVER config is registered as `battletowers-server.toml`. It controls world generation spacing/chance, floor count, queued worldgen work, Golem combat/scaling, fireball timing and power, and collapse behavior.
+Battle Towers has a per-world server config:
 
-Loot progression is intentionally data-driven under `data/battletowers/loot_table/chests/` rather than encoded into config strings as in the old Forge version, so modpacks can override it with datapacks.
+`world/serverconfig/battletowers-server.toml`
 
-## Build
+You can configure things such as:
 
-Import the project with JDK 21 and Gradle. CI runs a full `gradle build` for the port branch.
+- enable/disable natural tower generation;
+- minimum distance from world spawn;
+- minimum distance between towers;
+- overall tower spawn chance;
+- underground tower chance;
+- number of floors;
+- terrain height tolerance;
+- which Overworld tower types may generate naturally;
+- Golem health, damage and wake distance;
+- Golem slam and fireball behavior;
+- tower collapse delay, speed and explosion power.
 
-If a Gradle wrapper is not present locally, run:
+Natural Overworld tower types can be toggled individually under:
 
-```text
-gradle wrapper
+```toml
+[worldgen.towerTypes]
+cobblestone = true
+mossyCobblestone = true
+sandstone = true
+ice = true
+smoothStone = true
+jungle = false
 ```
 
-Then build with:
+Netherrack towers are intentionally excluded from natural Overworld generation.
 
-```text
-./gradlew build
-```
+## Commands
 
-Windows:
+The following commands require operator permissions:
 
-```text
-gradlew.bat build
-```
+- `/battletowers spawn [type] [floors] [underground]` — manually generates a tower;
+- `/battletowers types` — lists available tower types;
+- `/battletowers list` — lists tracked towers;
+- `/battletowers locate` — finds the nearest tracked Battle Tower;
+- `/battletowers delete` — deletes the nearest tracked tower;
+- `/battletowers regenerate` — regenerates the nearest tracked tower;
+- `/battletowers deleteall` — deletes all tracked towers;
+- `/battletowers regenerateall` — regenerates all tracked towers.
 
-## Legacy reference
+`/battletowers locate` searches already generated and tracked towers. It does not predict towers in unexplored chunks.
 
-The uploaded AtomicStryker archive is retained only as porting reference. The active 1.21.1 implementation lives under `src/main`; legacy Forge/FML code must not be added to the active source set unchanged.
+## Credits
 
-See `PORTING.md` and `PORT_STATUS.md` for architecture and port notes.
+### Original Battle Towers
+
+**AtomicStryker** — creator and original author of the Battle Towers mod.
+
+This port is based on the gameplay, assets and behavior of AtomicStryker's classic Battle Towers for older Minecraft versions.
+
+Original AtomicStryker mods repository:
+https://github.com/AtomicStryker/atomicstrykers-minecraft-mods
+
+### Minecraft 1.21.1 port
+
+**meynoik** — author of the **Minecraft 1.12.2 → 1.21.1 NeoForge port**.
+
+Also known as the **slop port**.
+
+## Disclaimer
+
+This is an unofficial community port and is not the original Battle Towers release by AtomicStryker.
