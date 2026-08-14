@@ -1,0 +1,57 @@
+name: Vendor original Battle Towers sounds
+
+on:
+  push:
+    branches:
+      - agent/port-battletowers
+    paths:
+      - .github/workflows/vendor-original-sounds.yml
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout port branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/port-battletowers
+
+      - name: Download original AtomicStryker sounds
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://raw.githubusercontent.com/AtomicStryker/atomicstrykers-minecraft-mods/1.21.1/BattleTowers/src/main/resources/assets/battletowers'
+          mkdir -p src/main/resources/assets/battletowers/sounds
+          curl --fail --location --retry 3 "$base/sounds.json" -o src/main/resources/assets/battletowers/sounds.json
+          for file in \
+            golem.ogg \
+            golemawaken.ogg \
+            golemcharge1.ogg \
+            golemcharge2.ogg \
+            golemdeath.ogg \
+            golemhurt1.ogg \
+            golemhurt2.ogg \
+            golemspecial1.ogg \
+            golemspecial2.ogg \
+            towerbreakstart.ogg \
+            towercrumble.ogg
+          do
+            curl --fail --location --retry 3 "$base/sounds/$file" -o "src/main/resources/assets/battletowers/sounds/$file"
+          done
+
+      - name: Commit vendored sounds
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/main/resources/assets/battletowers/sounds.json src/main/resources/assets/battletowers/sounds
+          if git diff --cached --quiet; then
+            echo 'Original sounds already present.'
+            exit 0
+          fi
+          git commit -m 'Restore original Battle Towers sounds'
+          git push origin HEAD:agent/port-battletowers
