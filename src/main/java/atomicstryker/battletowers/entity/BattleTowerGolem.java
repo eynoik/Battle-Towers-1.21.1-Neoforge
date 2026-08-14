@@ -1,5 +1,6 @@
 package atomicstryker.battletowers.entity;
 
+import atomicstryker.battletowers.world.TowerDestructionManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -31,6 +32,8 @@ public class BattleTowerGolem extends IronGolem {
     private int towerType;
     private int drops = 1;
     private BlockPos towerOrigin = BlockPos.ZERO;
+    private BlockPos towerBossPosition = BlockPos.ZERO;
+    private boolean towerUnderground;
 
     public BattleTowerGolem(EntityType<? extends IronGolem> type, Level level) {
         super(type, level);
@@ -109,6 +112,22 @@ public class BattleTowerGolem extends IronGolem {
         return towerOrigin;
     }
 
+    public void setTowerBossPosition(BlockPos towerBossPosition) {
+        this.towerBossPosition = towerBossPosition.immutable();
+    }
+
+    public BlockPos getTowerBossPosition() {
+        return towerBossPosition;
+    }
+
+    public void setTowerUnderground(boolean towerUnderground) {
+        this.towerUnderground = towerUnderground;
+    }
+
+    public boolean isTowerUnderground() {
+        return towerUnderground;
+    }
+
     @Override
     public boolean hurt(DamageSource source, float amount) {
         if (source.getEntity() instanceof Player player && !level().isClientSide) {
@@ -180,7 +199,7 @@ public class BattleTowerGolem extends IronGolem {
     public void die(DamageSource source) {
         boolean wasAlive = isAlive();
         super.die(source);
-        if (wasAlive && !level().isClientSide) {
+        if (wasAlive && level() instanceof ServerLevel serverLevel) {
             for (int i = 0; i < drops; i++) {
                 spawnAtLocation(Items.DIAMOND);
                 spawnAtLocation(Items.REDSTONE);
@@ -189,6 +208,9 @@ public class BattleTowerGolem extends IronGolem {
             for (int i = 0; i < clayDrops; i++) {
                 spawnAtLocation(Blocks.CLAY.asItem());
             }
+
+            BlockPos collapseCenter = towerBossPosition.equals(BlockPos.ZERO) ? blockPosition() : towerBossPosition;
+            TowerDestructionManager.start(serverLevel, collapseCenter, towerUnderground);
         }
     }
 
@@ -203,6 +225,10 @@ public class BattleTowerGolem extends IronGolem {
         tag.putInt("TowerX", towerOrigin.getX());
         tag.putInt("TowerY", towerOrigin.getY());
         tag.putInt("TowerZ", towerOrigin.getZ());
+        tag.putInt("BossX", towerBossPosition.getX());
+        tag.putInt("BossY", towerBossPosition.getY());
+        tag.putInt("BossZ", towerBossPosition.getZ());
+        tag.putBoolean("TowerUnderground", towerUnderground);
     }
 
     @Override
@@ -213,6 +239,8 @@ public class BattleTowerGolem extends IronGolem {
         towerType = tag.getInt("TowerType");
         drops = Math.max(1, tag.getInt("Drops"));
         towerOrigin = new BlockPos(tag.getInt("TowerX"), tag.getInt("TowerY"), tag.getInt("TowerZ"));
+        towerBossPosition = new BlockPos(tag.getInt("BossX"), tag.getInt("BossY"), tag.getInt("BossZ"));
+        towerUnderground = tag.getBoolean("TowerUnderground");
         if (tag.getBoolean("Awake")) {
             setAwake();
         } else {
