@@ -1,8 +1,8 @@
 package atomicstryker.battletowers.world;
 
 import atomicstryker.battletowers.BattleTowers;
+import atomicstryker.battletowers.config.BattleTowersConfig;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -19,13 +19,6 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public final class BattleTowerWorldgen {
-    private static final int CELL_SIZE_CHUNKS = 14;
-    private static final int MIN_DISTANCE_BETWEEN_TOWERS = 196;
-    private static final int MIN_DISTANCE_FROM_SPAWN = 96;
-    private static final int MAX_SURFACE_DIFFERENCE = 22;
-    private static final int UNDERGROUND_CHANCE_PERCENT = 15;
-    private static final int CHECKS_PER_TICK = 4;
-
     private static final int[][] TERRAIN_SAMPLES = {
             {4, -5}, {4, 0}, {4, 5},
             {0, -5}, {0, 0}, {0, 5},
@@ -38,6 +31,9 @@ public final class BattleTowerWorldgen {
     }
 
     public static void onChunkLoad(ChunkEvent.Load event) {
+        if (!BattleTowersConfig.worldgenEnabled()) {
+            return;
+        }
         if (!event.isNewChunk() || !(event.getLevel() instanceof ServerLevel level)) {
             return;
         }
@@ -50,8 +46,13 @@ public final class BattleTowerWorldgen {
     }
 
     public static void onServerTick(ServerTickEvent.Post event) {
+        if (!BattleTowersConfig.worldgenEnabled()) {
+            PENDING.clear();
+            return;
+        }
+
         MinecraftServer server = event.getServer();
-        int count = Math.min(PENDING.size(), CHECKS_PER_TICK);
+        int count = Math.min(PENDING.size(), BattleTowersConfig.worldgenChecksPerTick());
 
         for (int i = 0; i < count; i++) {
             PendingChunk pending = PENDING.poll();
@@ -80,10 +81,11 @@ public final class BattleTowerWorldgen {
         int z = (chunk.z << 4) + 8;
         BlockPos surface = BattleTowerGenerator.findSurface(level, x, z);
 
+        int minimumSpawnDistance = BattleTowersConfig.minDistanceFromSpawn();
         BlockPos spawn = level.getSharedSpawnPos();
         long spawnDx = (long) spawn.getX() - x;
         long spawnDz = (long) spawn.getZ() - z;
-        if (spawnDx * spawnDx + spawnDz * spawnDz < (long) MIN_DISTANCE_FROM_SPAWN * MIN_DISTANCE_FROM_SPAWN) {
+        if (spawnDx * spawnDx + spawnDz * spawnDz < (long) minimumSpawnDistance * minimumSpawnDistance) {
             return;
         }
 
@@ -93,8 +95,8 @@ public final class BattleTowerWorldgen {
             return;
         }
 
-        boolean underground = random.nextInt(100) < UNDERGROUND_CHANCE_PERCENT;
-        BattleTowerGenerator.generate(level, surface, type, BattleTowerGenerator.DEFAULT_FLOORS, underground);
+        boolean underground = random.nextInt(100) < BattleTowersConfig.undergroundChancePercent();
+        BattleTowerGenerator.generate(level, surface, type, BattleTowersConfig.defaultFloorCount(), underground);
         BattleTowers.LOGGER.info("Generated natural {} Battle Tower at [{}, {}], underground={}", type.serializedName(), x, z, underground);
     }
 
@@ -104,10 +106,11 @@ public final class BattleTowerWorldgen {
         int sand = 0;
         int foliage = 0;
         int other = 0;
+        int maxSurfaceDifference = BattleTowersConfig.maxSurfaceDifference();
 
         for (int[] sample : TERRAIN_SAMPLES) {
             BlockPos surface = BattleTowerGenerator.findSurface(level, center.getX() + sample[0], center.getZ() + sample[1]);
-            if (Math.abs(surface.getY() - center.getY()) > MAX_SURFACE_DIFFERENCE) {
+            if (Math.abs(surface.getY() - center.getY()) > maxSurfaceDifference) {
                 return null;
             }
 
@@ -145,22 +148,24 @@ public final class BattleTowerWorldgen {
     }
 
     private static boolean isCandidateChunk(long seed, ChunkPos chunk) {
-        int cellX = Math.floorDiv(chunk.x, CELL_SIZE_CHUNKS);
-        int cellZ = Math.floorDiv(chunk.z, CELL_SIZE_CHUNKS);
-        ChunkPos candidate = candidateForCell(seed, cellX, cellZ);
+        int minimumDistance = BattleTowersConfig.minDistanceBetweenTowers();
+        int cellSizeChunks = Math.max(4, ((minimumDistance + 15) / 16) + 1);
+        int cellX = Math.floorDiv(chunk.x, cellSizeChunks);
+        int cellZ = Math.floorDiv(chunk.z, cellSizeChunks);
+        ChunkPos candidate = candidateForCell(seed, cellX, cellZ, cellSizeChunks);
         if (!candidate.equals(chunk)) {
             return false;
         }
 
         long priority = cellPriority(seed, cellX, cellZ);
-        long minDistanceSq = (long) MIN_DISTANCE_BETWEEN_TOWERS * MIN_DISTANCE_BETWEEN_TOWERS;
+        long minDistanceSq = (long) minimumDistance * minimumDistance;
 
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
                 if (dx == 0 && dz == 0) {
                     continue;
                 }
-                ChunkPos neighbor = candidateForCell(seed, cellX + dx, cellZ + dz);
+                ChunkPos neighbor = candidateForCell(seed, cellX + dx, cellZ + dz, cellSizeChunks);
                 long blockDx = (long) (candidate.x - neighbor.x) * 16L;
                 long blockDz = (long) (candidate.z - neighbor.z) * 16L;
                 if (blockDx * blockDx + blockDz * blockDz < minDistanceSq
@@ -172,15 +177,15 @@ public final class BattleTowerWorldgen {
         return true;
     }
 
-    private static ChunkPos candidateForCell(long seed, int cellX, int cellZ) {
+    private static ChunkPos candidateForCell(long seed, int cellX, int cellZ, int cellSizeChunks) {
         long hash = mix64(seed
                 ^ (long) cellX * 341873128712L
                 ^ (long) cellZ * 132897987541L
                 ^ 0x5DEECE66DL);
-        int usable = CELL_SIZE_CHUNKS - 2;
+        int usable = cellSizeChunks - 2;
         int offsetX = 1 + Math.floorMod((int) hash, usable);
         int offsetZ = 1 + Math.floorMod((int) (hash >>> 32), usable);
-        return new ChunkPos(cellX * CELL_SIZE_CHUNKS + offsetX, cellZ * CELL_SIZE_CHUNKS + offsetZ);
+        return new ChunkPos(cellX * cellSizeChunks + offsetX, cellZ * cellSizeChunks + offsetZ);
     }
 
     private static long cellPriority(long seed, int cellX, int cellZ) {
