@@ -23,7 +23,6 @@ import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.LargeFireball;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -242,9 +241,7 @@ public class BattleTowerGolem extends IronGolem {
         level().playSound(null, blockPosition(), SoundEvents.GHAST_SHOOT, SoundSource.HOSTILE, 4.0F,
                 1.0F + (random.nextFloat() - random.nextFloat()) * 0.2F);
 
-        // Modern LargeFireball already implements projectile deflection, so players can
-        // punch this back at the Golem just like the classic Battle Towers projectile.
-        LargeFireball fireball = new LargeFireball(
+        BattleTowerGolemFireball fireball = new BattleTowerGolemFireball(
                 serverLevel,
                 this,
                 direction,
