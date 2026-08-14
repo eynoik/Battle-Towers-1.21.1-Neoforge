@@ -88,8 +88,9 @@ public final class BattleTowerCommands {
     }
 
     private static int listTowers(CommandSourceStack source) {
-        int count = TowerRegistrySavedData.get(source.getLevel()).all().size();
-        source.sendSuccess(() -> Component.literal("Tracked Battle Towers: " + count), false);
+        ServerLevel level = source.getLevel();
+        int count = TowerRegistrySavedData.get(level).all(level).size();
+        source.sendSuccess(() -> Component.literal("Tracked Battle Towers in this dimension: " + count), false);
         return count;
     }
 
@@ -115,13 +116,13 @@ public final class BattleTowerCommands {
 
     private static int deleteAll(CommandSourceStack source) {
         int count = TowerMaintenanceService.deleteAll(source.getLevel());
-        source.sendSuccess(() -> Component.literal("Deleted " + count + " tracked Battle Tower(s)."), true);
+        source.sendSuccess(() -> Component.literal("Deleted " + count + " tracked Battle Tower(s) in this dimension."), true);
         return count;
     }
 
     private static int regenerateAll(CommandSourceStack source) {
         int count = TowerMaintenanceService.regenerateAll(source.getLevel());
-        source.sendSuccess(() -> Component.literal("Regenerated " + count + " tracked Battle Tower(s)."), true);
+        source.sendSuccess(() -> Component.literal("Regenerated " + count + " tracked Battle Tower(s) in this dimension."), true);
         return count;
     }
 }
