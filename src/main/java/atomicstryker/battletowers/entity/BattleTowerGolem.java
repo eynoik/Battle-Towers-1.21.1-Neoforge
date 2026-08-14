@@ -107,7 +107,7 @@ public class BattleTowerGolem extends IronGolem {
             getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(damage);
         }
         if (getAttribute(Attributes.MAX_HEALTH) != null) {
-            double previousHealth = getHealth();
+            float previousHealth = getHealth();
             double health = BattleTowersConfig.golemBaseHealth()
                     + BattleTowersConfig.golemHealthPerTowerType() * this.towerType;
             getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
