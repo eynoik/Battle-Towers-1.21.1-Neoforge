@@ -42,7 +42,7 @@ public final class BattleTowerCommands {
                                                                 context.getSource(),
                                                                 StringArgumentType.getString(context, "type"),
                                                                 IntegerArgumentType.getInteger(context, "floors"),
-                                                                BoolArgumentType.getBool(context, "underground"))))))
+                                                                BoolArgumentType.getBool(context, "underground")))))))
                         .then(Commands.literal("types")
                                 .executes(context -> listTypes(context.getSource())))
         );
