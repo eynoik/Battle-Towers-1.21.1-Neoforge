@@ -1,5 +1,6 @@
 package atomicstryker.battletowers.command;
 
+import atomicstryker.battletowers.config.BattleTowersConfig;
 import atomicstryker.battletowers.world.BattleTowerGenerator;
 import atomicstryker.battletowers.world.TowerType;
 import com.mojang.brigadier.arguments.BoolArgumentType;
@@ -24,12 +25,12 @@ public final class BattleTowerCommands {
                 Commands.literal("battletowers")
                         .requires(source -> source.hasPermission(2))
                         .then(Commands.literal("spawn")
-                                .executes(context -> spawn(context.getSource(), "random", BattleTowerGenerator.DEFAULT_FLOORS, false))
+                                .executes(context -> spawn(context.getSource(), "random", BattleTowersConfig.defaultFloorCount(), false))
                                 .then(Commands.argument("type", StringArgumentType.word())
                                         .executes(context -> spawn(
                                                 context.getSource(),
                                                 StringArgumentType.getString(context, "type"),
-                                                BattleTowerGenerator.DEFAULT_FLOORS,
+                                                BattleTowersConfig.defaultFloorCount(),
                                                 false))
                                         .then(Commands.argument("floors", IntegerArgumentType.integer(2, 12))
                                                 .executes(context -> spawn(
