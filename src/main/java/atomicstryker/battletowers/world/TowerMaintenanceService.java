@@ -14,36 +14,36 @@ public final class TowerMaintenanceService {
 
     public static boolean deleteNearest(ServerLevel level, BlockPos position, double maxDistance) {
         TowerRegistrySavedData data = TowerRegistrySavedData.get(level);
-        return data.nearest(position, maxDistance).map(record -> {
+        return data.nearest(level, position, maxDistance).map(record -> {
             clearTower(level, record);
-            data.remove(record.origin());
+            data.remove(level, record.origin());
             return true;
         }).orElse(false);
     }
 
     public static boolean regenerateNearest(ServerLevel level, BlockPos position, double maxDistance) {
         TowerRegistrySavedData data = TowerRegistrySavedData.get(level);
-        return data.nearest(position, maxDistance).map(record -> {
+        return data.nearest(level, position, maxDistance).map(record -> {
             clearTower(level, record);
             TowerAssembler.build(level, record.origin(), record.towerType(), record.floors(), record.underground());
-            data.addOrReplace(record.origin(), record.towerType(), record.floors(), record.underground());
+            data.addOrReplace(level, record.origin(), record.towerType(), record.floors(), record.underground());
             return true;
         }).orElse(false);
     }
 
     public static int deleteAll(ServerLevel level) {
         TowerRegistrySavedData data = TowerRegistrySavedData.get(level);
-        List<TowerRegistrySavedData.TowerRecord> records = data.all();
+        List<TowerRegistrySavedData.TowerRecord> records = data.all(level);
         for (TowerRegistrySavedData.TowerRecord record : records) {
             clearTower(level, record);
         }
-        data.clear();
+        data.clear(level);
         return records.size();
     }
 
     public static int regenerateAll(ServerLevel level) {
         TowerRegistrySavedData data = TowerRegistrySavedData.get(level);
-        List<TowerRegistrySavedData.TowerRecord> records = data.all();
+        List<TowerRegistrySavedData.TowerRecord> records = data.all(level);
         for (TowerRegistrySavedData.TowerRecord record : records) {
             clearTower(level, record);
             TowerAssembler.build(level, record.origin(), record.towerType(), record.floors(), record.underground());
